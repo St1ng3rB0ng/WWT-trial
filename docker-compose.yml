@@ -1,0 +1,35 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: postgres_db
+    environment:
+      POSTGRES_DB: app_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    # volumes:
+
+  auth-api:
+    build: ./ServiceA
+    container_name: auth_api
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/app_db
+      SPRING_DATASOURCE_USERNAME: user
+      SPRING_DATASOURCE_PASSWORD: password
+      SERVICE_B_URL: http://data-api:8081
+      INTERNAL_API_TOKEN: secret-key-123
+    depends_on:
+      - postgres
+
+  data-api:
+    build: ./ServiceB
+    container_name: data_api
+    ports:
+      - "8081:8081"
+    environment:
+      INTERNAL_API_TOKEN: secret-key-123
+    depends_on:
+      - postgres
