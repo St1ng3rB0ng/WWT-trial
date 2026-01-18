@@ -8,10 +8,18 @@ services:
       POSTGRES_PASSWORD: password
     ports:
       - "5432:5432"
-    # volumes:
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d app_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   auth-api:
-    build: ./ServiceA
+    build:
+      context: ./ServiceA
+      dockerfile: Dockerfile
     container_name: auth_api
     ports:
       - "8080:8080"
@@ -21,15 +29,27 @@ services:
       SPRING_DATASOURCE_PASSWORD: password
       SERVICE_B_URL: http://data-api:8081
       INTERNAL_API_TOKEN: secret-key-123
+      JWT_SECRET: my-super-secret-key-for-jwt-token-generation-minimum-256-bits
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+      data-api:
+        condition: service_started
+    networks:
+      - app-network
 
   data-api:
-    build: ./ServiceB
+    build:
+      context: ./ServiceB
+      dockerfile: Dockerfile
     container_name: data_api
     ports:
       - "8081:8081"
     environment:
       INTERNAL_API_TOKEN: secret-key-123
-    depends_on:
-      - postgres
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
