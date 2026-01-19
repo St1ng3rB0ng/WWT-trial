@@ -1,211 +1,160 @@
-# Two Spring Boot Services with PostgreSQL and Docker
+# Spring Boot Microservices Test Task
 
-Two microservices that communicate with each other: Service A handles authentication and calls Service B for text
-transformation.
+Two microservices: Service A handles authentication and calls Service B for text transformation.
 
 ## Architecture
 
-- **Service A (auth-api)**: Authentication service with JWT, exposes `/api/auth/register`, `/api/auth/login`, and
-  `/api/process`
-- **Service B (data-api)**: Text transformation service, accepts requests only from Service A via internal token
-- **PostgreSQL**: Stores users and processing logs
+- Service A: Authentication service with JWT
+- Service B: Text transformation service (internal only)
+- PostgreSQL: Stores users and processing logs
 
 ## Requirements
 
 - Docker and Docker Compose
-- curl (for testing)
+- curl for testing
 
 ## Quick Start
 
-### Build and run
+Start all services:
 
 ```bash
 docker compose up -d --build
 ```
 
-Wait 30-60 seconds for services to start.
+Wait about 30 seconds for services to initialize.
 
-### Check status
+Check status:
 
 ```bash
 docker compose ps
 ```
 
-You should see three running containers: postgres_db, auth_api, data_api.
+## Testing
 
-## API Endpoints
-
-### Service A (port 8080)
-
-**Register user**
-
-```bash
-curl -X POST http://localhost:8080/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d "{\"email\":\"test11@example.com\",\"password\":\"password123\"}" \
-  -w "\nHTTP Status: %{http_code}\n"
-```
-
-Response (201):
-
-```json
-{
-  "token": "eyJhbGciOiJIUzI1NiJ9..."
-}
-```
-
-**Login**
-
-```bash
-curl -X POST http://localhost:8080/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d "{\"email\":\"test11@example.com\",\"password\":\"password123\"}" \
-  -w "\nHTTP Status: %{http_code}\n"
-```
-
-Response (200):
-
-```json
-{
-  "token": "eyJhbGciOiJIUzI1NiJ9..."
-}
-```
-
-**Process text** (requires JWT token)
-
-```bash
-# Replace YOUR_TOKEN with the token from register/login
-# for example: eyJhbGciOiJIUzM4NCJ9.eyJ1c2VySWQiOiI3ZWI2OTU0Mi1hOTIzLTQ5YTYtYmIwMC05ZDg1YzM2YTFjNWYiLCJzdWIiOiJ0ZXN0MTFAZXhhbXBsZS5jb20iLCJpYXQiOjE3Njg3NDAwNDgsImV4cCI6MTc2ODgyNjQ0OH0.EfcN-WnmLWFI-1xLE0bbI4HmwgtHd5CtPxZQKO4vKIde7HQMGd_EUG2lItHeoSQL
-curl -X POST http://localhost:8080/api/process \
-  -H "Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJ1c2VySWQiOiI3ZWI2OTU0Mi1hOTIzLTQ5YTYtYmIwMC05ZDg1YzM2YTFjNWYiLCJzdWIiOiJ0ZXN0MTFAZXhhbXBsZS5jb20iLCJpYXQiOjE3Njg3NDAwNDgsImV4cCI6MTc2ODgyNjQ0OH0.EfcN-WnmLWFI-1xLE0bbI4HmwgtHd5CtPxZQKO4vKIde7HQMGd_EUG2lItHeoSQL" \
-  -H "Content-Type: application/json" \
-  -d "{\"text\":\"hello world\"}" \
-  -w "\nHTTP Status: %{http_code}\n"
-```
-
-Response (200):
-
-```json
-{
-  "result": "DLROW OLLEH [TRANSFORMED]"
-}
-```
-
-### Service B (port 8081)
-
-Service B only accepts requests with valid X-Internal-Token header. Direct access without token returns 403.
-
-Transform text (with internal token)
-
-```bash
-curl -X POST http://localhost:8081/api/transform \
-  -H "X-Internal-Token: secret-key-123" \
-  -H "Content-Type: application/json" \
-  -d "{\"text\":\"hello\"}" \
-  -w "\nHTTP Status: %{http_code}\n"
-```
-
-Response (200):
-
-```json
-{
-  "result": "OLLEH [TRANSFORMED]"
-}
-```
-
-Without token (403):
-
-```bash
-curl -X POST http://localhost:8081/api/transform \
-  -H "Content-Type: application/json" \
-  -d "{\"text\":\"hello\"}" \
-  -w "\nHTTP Status: %{http_code}\n"
-```
-
-Response (403):
-
-```json
-{
-  "error": "Forbidden: Invalid or missing internal token"
-}
-```
-
-## Complete Example
-
-```bash
-# 1. Start services
-docker compose up -d --build
-sleep 30
-
-# 2. Register user and save response
-curl -X POST http://localhost:8080/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d "{\"email\":\"user@test.com\",\"password\":\"pass123\"}" \
-  -w "\nHTTP Status: %{http_code}\n"
-
-# Copy the token from response
-
-# 3. Process text (replace YOUR_TOKEN)
-curl -X POST http://localhost:8080/api/process \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d "{\"text\":\"Spring Boot\"}" \
-  -w "\nHTTP Status: %{http_code}\n"
-
-# Expected: {"result":"TOOB GNIRPS [TRANSFORMED]"}
-# HTTP Status: 200
-```
-
-## Automated Testing
+Run automated tests:
 
 ```bash
 chmod +x test.sh
 ./test.sh
 ```
 
-## Useful Commands
+Or test manually:
+
+### 1. Register user
 
 ```bash
-# View logs
+curl -X POST http://localhost:8080/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"user@test.com\",\"password\":\"pass123\"}"
+```
+
+Response:
+```json
+{"token":"eyJhbGciOiJIUzM4NCJ9..."}
+```
+
+### 2. Login
+
+```bash
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"user@test.com\",\"password\":\"pass123\"}"
+```
+
+Response:
+```json
+{"token":"eyJhbGciOiJIUzM4NCJ9..."}
+```
+
+### 3. Process text
+
+Replace YOUR_TOKEN with actual token from login:
+
+```bash
+curl -X POST http://localhost:8080/api/process \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"text\":\"hello world\"}"
+```
+
+Response:
+```json
+{"result":"DLROW OLLEH [TRANSFORMED]"}
+```
+
+## How it works
+
+1. User registers or logs in to Service A
+2. Service A returns JWT token
+3. User sends process request with token to Service A
+4. Service A validates token
+5. Service A calls Service B with internal token
+6. Service B transforms text and returns result
+7. Service A saves log to database
+8. Service A returns result to user
+
+## Database Schema
+
+users table:
+- id (UUID)
+- email (unique)
+- password_hash
+
+processing_log table:
+- id (UUID)
+- user_id (UUID)
+- input_text (text)
+- output_text (text)
+- created_at (timestamp)
+
+## Commands
+
+View logs:
+```bash
 docker compose logs -f
+```
 
-# View logs for specific service
-docker compose logs -f auth-api
-
-# Stop services
+Stop services:
+```bash
 docker compose down
+```
 
-# Stop and remove volumes
-docker compose down -v
-
-# Restart services
+Restart:
+```bash
 docker compose restart
 ```
 
-## Troubleshooting
-
-**Services not starting**
-
+Remove all data:
 ```bash
-docker compose logs
 docker compose down -v
-docker compose up -d --build
 ```
 
-**Database connection error**
+## Environment Variables
 
-```bash
-# Wait for PostgreSQL to be ready
-docker compose exec postgres pg_isready -U user -d app_db
+PostgreSQL:
+- POSTGRES_DB: app_db
+- POSTGRES_USER: user
+- POSTGRES_PASSWORD: password
 
-# Restart services
-docker compose restart
-```
+Service A:
+- SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/app_db
+- SERVICE_B_URL: http://data-api:8081
+- JWT_SECRET: signing key for JWT tokens
+- INTERNAL_API_TOKEN: shared secret for Service B
 
-## Technical Details
+Service B:
+- INTERNAL_API_TOKEN: shared secret for validation
 
-- Spring Boot 3.2.1
+## Security
+
+- Passwords hashed with BCrypt
+- JWT tokens expire after 24 hours
+- Service B accessible only from Service A via internal Docker network
+- Internal token required for Service A to Service B communication
+
+## Tech Stack
+
+- Spring Boot 4.0.1
 - Java 17
 - PostgreSQL 15
-- BCrypt password hashing
-- Docker 
+- Docker
